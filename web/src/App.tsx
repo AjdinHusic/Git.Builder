@@ -3,7 +3,7 @@ import "antd/dist/antd.css";
 import {QueryClient, QueryClientProvider} from 'react-query';
 import {AddCredentials} from "./components/AddCredentials";
 import CloneRepository from "./components/CloneRepository";
-import {Divider} from "antd";
+import {Col, Divider, Row} from "antd";
 import ShowBranches from "./components/ShowBranches";
 import Terminal from "./components/Terminal";
 
@@ -14,11 +14,18 @@ function App() {
   return (
     <div className="App">
         <QueryClientProvider client={queryClient}>
-            <AddCredentials />
-            <Divider />
-            <CloneRepository />
-            <Divider />
-            <Terminal />
+            <Row justify={"space-evenly"} gutter={24}>
+                <Col span={12}>
+                    <AddCredentials />
+                    <Divider />
+                    <CloneRepository />
+                    <Divider />
+                </Col>
+                <Col span={12}>
+                    <Terminal />
+                </Col>
+            </Row>
+            
         </QueryClientProvider>
     </div>
   )

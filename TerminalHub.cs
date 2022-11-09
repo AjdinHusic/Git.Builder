@@ -6,13 +6,15 @@ namespace Git.Builder;
 
 public class TerminalHub : Hub
 {
-    public async Task SendMessage(string command)
+
+    public async Task SendMessage(string command, string[] arguments)
     {
         try
         {
             var cmd = Cli
                     .Wrap(command)
-                ;
+                    .WithArguments(arguments);
+            
             await foreach (var cmdEvent in cmd.ListenAsync())
             {
                 switch (cmdEvent)

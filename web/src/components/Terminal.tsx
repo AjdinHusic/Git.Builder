@@ -1,11 +1,16 @@
-import {FC, useEffect, useState} from "react";
+import {FC, useEffect, useRef, useState} from "react";
 import {HttpTransportType, HubConnection, HubConnectionBuilder} from "@microsoft/signalr";
 import client from "../axios-client";
-import {Button, Input, notification} from "antd";
+import {Button, Input, Layout, notification, Typography} from "antd";
 import "./Terminal.css";
 
 
 let connection: HubConnection | null = null;
+
+interface History {
+    type: "message" | "output" | "command" | "error";
+    value: string;
+}
 
 const Terminal: FC = () => {
     
@@ -20,14 +25,23 @@ const Terminal: FC = () => {
             .build();
 
         connection.on("ProcessStarted", function (output: string) {
-            setWelcomeMessage(output);
+            setHistory(state => [
+                ...state,
+                {
+                    type: "message",
+                    value: output
+                }
+            ])
         });
         
         connection.on("ReceivedOutput", function (output: string) {
             console.log(output);
             setHistory      (state => [
                 ...state,
-                output
+                {
+                    type: "output",
+                    value: output,
+                }
             ])
         });
 
@@ -35,14 +49,15 @@ const Terminal: FC = () => {
             console.log(output);
             setHistory      (state => [
                 ...state,
-                output
+                {
+                    type: "error",
+                    value: output,
+                }
             ])
         });
         
         connection.on("Error", function (e) {
-           notification.error({
-               message: e
-           }); 
+           console.error(e);
         });
         
         connection
@@ -53,22 +68,72 @@ const Terminal: FC = () => {
     }, [])
     
     const send = () => {
-        connection?.invoke("SendMessage", command);
+        setHistory(state => [
+            ...state,
+            {
+                type: "command",
+                value: command,
+            }
+        ])
+        connection?.invoke("SendMessage", 
+            command.split(" ")[0],
+            command.split(" ").splice(1));
         setCommand("");
     }
     
     const [command, setCommand] = useState("");
-    const [welcomeMessage, setWelcomeMessage] = useState("Welcome to Git Builder");
-    const [history, setHistory] = useState<string[]>([]);
+    
+    const [history, setHistory] = useState<History[]>([{
+        type: "message",
+        value: "Welcome to Git Builder terminal! Attempting to connect..."
+    }]);
+    
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView();
+    }, [history])
+    const bottomRef = useRef<HTMLInputElement>(null);
+    
     return <>
-            <Input.TextArea 
-                className={"terminal"} 
-                value={history.join("\n")}  
-                rows={12} 
-                maxLength={12} 
-                disabled />
-            <Input prefix={"$"} value={command} onChange={x => setCommand(x.target.value)} />
-            <Button prefix={"$"} onClick={send}>Send</Button>
+        <Layout.Content className={"terminal"}>
+            {
+                history.map(x => 
+                    x.type === "command" ? 
+                    <div className={"command"}>
+                        <div className={"prompt"}>
+                            $ 
+                        </div>
+                        <div>
+                            {x.value}
+                        </div>    
+                    </div>
+                    : 
+                    x.type === "message" ?
+                    <div className={"command"}>
+                        <div className={"prompt"}>
+                            {">"}
+                        </div>
+                        <div className={"message"}>{x.value}</div>
+                    </div>
+                    :
+                    x.type === "error" ? 
+                    <div className={"error"}>{x.value}</div> 
+                    :    
+                    <div className={"output"}>{x.value}</div>)
+            }
+            <div className={"command"}>
+                <span className={"prompt"}>
+                    $
+                </span>
+                <input 
+                    ref={bottomRef}
+                    className={"input"} 
+                    type={"text"} 
+                    value={command} 
+                    onChange={x => setCommand(x.target.value)} 
+                    onKeyDown={e => e.key === "Enter" && send()}
+                />
+            </div>
+        </Layout.Content>
         </>
 }
 
