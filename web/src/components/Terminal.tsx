@@ -78,9 +78,15 @@ const Terminal: FC = () => {
         connection?.invoke("SendMessage", 
             command.split(" ")[0],
             command.split(" ").splice(1));
+        
+        setCommandHistory(x => [
+            ...x,
+            command
+        ]);
         setCommand("");
     }
     
+    const [commandHistory, setCommandHistory] = useState<string[]>([]);
     const [command, setCommand] = useState("");
     
     const [history, setHistory] = useState<History[]>([{
@@ -130,7 +136,14 @@ const Terminal: FC = () => {
                     type={"text"} 
                     value={command} 
                     onChange={x => setCommand(x.target.value)} 
-                    onKeyDown={e => e.key === "Enter" && send()}
+                    onKeyDown={e => {
+                        if (e.key === "Enter") {
+                            send();
+                        }
+                        if (e.key === "ArrowUp" && commandHistory[commandHistory.length - 1]) {
+                            setCommand(commandHistory[commandHistory.length - 1])
+                        }
+                    }}
                 />
             </div>
         </Layout.Content>
