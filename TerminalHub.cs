@@ -7,13 +7,14 @@ namespace Git.Builder;
 public class TerminalHub : Hub
 {
 
-    public async Task SendMessage(string command, string[] arguments)
+    public async Task SendMessage(string repo, string command, string[] arguments)
     {
         try
         {
             var cmd = Cli
                     .Wrap(command)
-                    .WithArguments(arguments);
+                    .WithArguments(arguments)
+                    .WithWorkingDirectory(Path.Combine(ManagerService.Repos, repo));
             
             await foreach (var cmdEvent in cmd.ListenAsync())
             {

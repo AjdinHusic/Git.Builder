@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 
@@ -8,7 +9,8 @@ public class ManagerService : IManagerService
 {
     public const string Repos = "App_Data/repos";
     public const string AuthPath = "App_Data/auth";
-
+    public const string CommandsPath = "App_Data/commands";
+    
     // private async Task<Credentials> ReadCredentials()
     // {
     //     
@@ -64,7 +66,9 @@ public class ManagerService : IManagerService
     {
         var repository = new Repository(Path.Combine(Repos, repoUrl));
 
-        var branchExists = repository.Branches.Any(x => x.FriendlyName.Equals(Path.Combine(x.RemoteName, branch)));
+        var branchExists = repository
+            .Branches
+            .Any(x => x.FriendlyName.Equals(Path.Combine(x.RemoteName, branch)));
         if (!branchExists)
         {
             throw new NotFoundException($"no branch found {branch}");
@@ -100,13 +104,26 @@ public class ManagerService : IManagerService
             .Select(x => x.FriendlyName.Replace(x.RemoteName + "/", "")));
     }
 
-    public void AddCommand(string command)
+    public async Task AddCommand(string command)
     {
-        //
-        throw new NotImplementedException();
+        Directory.CreateDirectory(CommandsPath);
+        await File.AppendAllLinesAsync(Path.Combine(CommandsPath, ".commands"), new [] {command});
+    }
+
+    public async Task<IEnumerable<CommandInfo>> ListCommands()
+    {
+        var regex = new Regex("{.*?}");
+        var commands = await File.ReadAllLinesAsync(Path.Combine(CommandsPath, ".commands"));
+        
+        return commands.Select(x =>
+        {
+            var matched = regex.Matches(x);
+            return new CommandInfo(x, matched.Select(m => m.Value).ToArray());
+        });
     }
 }
 
 public record Credentials(string? Username, string? Password);
 public record BranchInfo(string? Name, int? AheadBy, int? BehindBy);
 public record RepositoryInfo(BranchInfo CurrentBranch, IEnumerable<string> Branches);
+public record CommandInfo(string Command, params string[] Args);

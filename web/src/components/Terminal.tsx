@@ -12,8 +12,11 @@ interface History {
     value: string;
 }
 
-const Terminal: FC = () => {
-    
+interface TerminalProps {
+    repo: string;
+}
+
+const Terminal: FC<TerminalProps> = ({repo}) => {
     
     useEffect(() => {
         const baseUrl = client.defaults.baseURL;
@@ -22,6 +25,7 @@ const Terminal: FC = () => {
                 skipNegotiation: true,
                 transport: HttpTransportType.WebSockets
             })
+            .withAutomaticReconnect()
             .build();
 
         connection.on("ProcessStarted", function (output: string) {
@@ -36,7 +40,7 @@ const Terminal: FC = () => {
         
         connection.on("ReceivedOutput", function (output: string) {
             console.log(output);
-            setHistory      (state => [
+            setHistory(state => [
                 ...state,
                 {
                     type: "output",
@@ -62,7 +66,13 @@ const Terminal: FC = () => {
         
         connection
             .start()
-            .then(x => console.log("connection opened"))
+            .then(x => setHistory(state => [
+                ...state,
+                {
+                    type: "message",
+                    value: "Connected :)"
+                }
+            ]))
             .catch(e => console.log(e));
 
     }, [])
@@ -76,6 +86,7 @@ const Terminal: FC = () => {
             }
         ])
         connection?.invoke("SendMessage", 
+            repo,
             command.split(" ")[0],
             command.split(" ").splice(1));
         

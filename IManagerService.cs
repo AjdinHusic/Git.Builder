@@ -8,5 +8,6 @@ public interface IManagerService
     public void Checkout(string repoUrl, string branch);
     public IEnumerable<string> GetClonedRepos();
     public RepositoryInfo ListBranches(string repo);
-    public void AddCommand(string command);
+    public Task AddCommand(string command);
+    public Task<IEnumerable<CommandInfo>> ListCommands();
 }
