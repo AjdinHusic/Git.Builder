@@ -54,11 +54,12 @@ public class ManagerService : IManagerService
         }).ToList();
         var path = Repository.Clone(repoUrl, Path.Combine(Repos, folderLocation), new CloneOptions()
         {
-            CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
+            CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials()
             {
                 Username = credentials.FirstOrDefault()?.Username,
                 Password = credentials.FirstOrDefault()?.Password,
-            }
+            },
+            
         });
     }
 

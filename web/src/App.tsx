@@ -4,10 +4,8 @@ import { QueryClient, QueryClientProvider, useQuery } from "react-query";
 import Credentials from "./components/Credentials";
 import Repositories from "./components/Repositories";
 import { Col, Divider, Row } from "antd";
-import ShowBranches from "./components/ShowBranches";
 import Terminal from "./components/Terminal";
 import Commands from "./components/Commands";
-import { useState } from "react";
 import { atom, useAtom } from "jotai";
 
 const queryClient = new QueryClient();
@@ -23,7 +21,7 @@ function App() {
         <Row justify={"space-evenly"} gutter={24}>
           <Col span={12}>
             <Credentials />
-            <Divider />
+            <Divider orientationMargin={0} />
             <Repositories />
             {terminal && (
               <>

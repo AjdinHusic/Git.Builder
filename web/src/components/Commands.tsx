@@ -1,49 +1,84 @@
 import { FC, useState } from "react";
-import {
-  Button,
-  Col,
-  Form,
-  Input,
-  List,
-  Modal,
-  Row,
-  Spin,
-  Typography,
-} from "antd";
-import { useMutation, useQuery } from "react-query";
+import { Button, Col, Input, Modal, Row, Spin, Typography } from "antd";
+import { useQuery } from "react-query";
 import client from "../axios-client";
 import { useAtom } from "jotai";
 import { TerminalAtom } from "../App";
-import { CodeOutlined, PlayCircleOutlined } from "@ant-design/icons";
-import { PlayCircle, PlayCircleOutlineOutlined } from "@mui/icons-material";
+import { CodeOutlined } from "@ant-design/icons";
+import { PlayCircleOutlineOutlined } from "@mui/icons-material";
 import { IconButton } from "@mui/material";
+import AddCommand from "./AddCommand";
+import { Simulate } from "react-dom/test-utils";
+import select = Simulate.select;
+import { send } from "./Terminal";
 
 interface CommandInfo {
   command: string;
   args: string[];
 }
 
+interface CommandState {
+  commandTemplate: string;
+  commandValue: string;
+  args: {
+    argument: string;
+    argValue: string;
+  }[];
+}
+
 const Commands: FC = () => {
-  const [command, setCommand] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [terminal] = useAtom(TerminalAtom);
 
-  const { data, isLoading } = useQuery(["commands"], () =>
-    client.get<CommandInfo[]>("commands")
-  );
-  const commands = data?.data ?? [];
-  const { mutateAsync, isLoading: isSubmitting } = useMutation(
+  const initializeCommandsState = (commands: CommandInfo[]): CommandState[] =>
+    commands.map((command) => ({
+      commandTemplate: command.command,
+      commandValue: command.command,
+      args: command.args.map((x) => ({
+        argument: x,
+        argValue: "",
+      })),
+    }));
+
+  const { data, isLoading } = useQuery(
     ["commands"],
-    () => {
-      return client.post("commands", {
-        command,
-      });
+    async () => client.get<CommandInfo[]>("commands"),
+    {
+      onSuccess(data) {
+        setCommands(initializeCommandsState(data.data ?? []));
+      },
     }
   );
+  const commands = data?.data ?? [];
+  const [commandsState, setCommands] = useState<CommandState[]>(
+    initializeCommandsState(commands)
+  );
 
-  const submit = async () => {
-    await mutateAsync();
-    setCommand(command);
+  const setCommandState = (
+    selectedIndex: number,
+    arg: string,
+    argValue: string
+  ) => {
+    setCommands((state) =>
+      state.map((commandItem, commandIndex) => {
+        if (selectedIndex !== commandIndex) return commandItem;
+        return {
+          commandTemplate: commandItem.commandTemplate,
+          commandValue: commandItem.args.reduce((previousValue, currentArg) => {
+            return currentArg.argument === arg
+              ? previousValue.replace(currentArg.argument, argValue)
+              : previousValue.replace(currentArg.argument, currentArg.argValue);
+          }, commandItem.commandTemplate),
+          args: commandItem.args.map((argumentState) => ({
+            argument: argumentState.argument,
+            argValue:
+              argumentState.argument === arg
+                ? argValue
+                : argumentState.argValue,
+          })),
+        };
+      })
+    );
   };
 
   return (
@@ -74,21 +109,32 @@ const Commands: FC = () => {
         &nbsp; <b>{terminal}</b>
       </div>
       <Spin spinning={isLoading}>
-        {commands.map((cmd) => (
+        {commandsState.map((cmd, index) => (
           <div style={{ border: "1px solid #eee", borderTop: 0 }}>
             <Row justify={"space-between"} style={{ padding: "8px" }}>
               <pre style={{ marginBottom: 0, color: "gray" }}>
-                {cmd.command}
+                {cmd.commandValue}
               </pre>
-              <IconButton color={"success"}>
+              <IconButton
+                color={"success"}
+                onClick={() => {
+                  send(cmd.commandValue);
+                }}
+              >
                 <PlayCircleOutlineOutlined />
               </IconButton>
             </Row>
-            {cmd.args.map((i) => (
+            {cmd.args.map((arg) => (
               <Row style={{ padding: "0 8px", marginBottom: 8 }}>
-                <Col span={6}>{i}</Col>
+                <Col span={6}>{arg.argument}</Col>
                 <Col span={6}>
-                  <Input placeholder={i} />
+                  <Input
+                    placeholder={arg.argument}
+                    onChange={(x) =>
+                      setCommandState(index, arg.argument, x.target.value)
+                    }
+                    value={arg.argValue}
+                  />
                 </Col>
               </Row>
             ))}
@@ -100,24 +146,7 @@ const Commands: FC = () => {
         onCancel={() => setIsOpen(false)}
         onOk={() => setIsOpen(false)}
       >
-        <Spin spinning={isSubmitting}>
-          <Form layout={"vertical"} onFinish={submit}>
-            <Form.Item
-              label={
-                "Add Command, use {} for argument interpolation, .e.g. 'ping {host}'"
-              }
-            >
-              <Input
-                placeholder={"command"}
-                value={command}
-                onChange={(x) => setCommand(x.target.value)}
-              />
-            </Form.Item>
-            <Button type={"primary"} htmlType={"submit"}>
-              Save
-            </Button>
-          </Form>
-        </Spin>
+        <AddCommand />
       </Modal>
     </>
   );
